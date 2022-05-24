@@ -1,0 +1,98 @@
+﻿@inject FavoriteService fs
+@model HomeViewModel
+@{
+    ViewData["Title"] = "Home Page";
+    var favs = fs.GetFavList();
+    bool IsFavorited(int movieId) => favs.Contains(movieId);
+
+}
+
+<h1>Top 100 Movies</h1>
+
+<div class="row">
+    <div class="col-sm-3">
+        <h4 class="mt-2">Genres</h4>
+        <div class="list-group">
+            <a asp-action="Index" asp-route-gid="" class="list-group-item list-group-item-action @(Model.GenreId.HasValue ? "" : "active")">All</a>
+            @foreach (var genre in Model.Genres)
+            {
+                <a asp-action="IndexWithGenre" asp-route-genreName="@genre.Name" class="d-flex align-items-baseline list-group-item list-group-item-action @(genre.Id == Model.GenreId ? "active" : "")">
+                    @genre.Name
+                    <span class="badge badge-secondary ml-auto">@genre.MovieCount</span>
+                </a>
+            }
+        </div>
+    </div>
+    <div class="col-sm-9">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Image</th>
+                    <th>Title</th>
+                    <th>Year</th>
+                    <th>Rating</th>
+                    <th>Genres</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var movie in Model.Movies)
+                {
+                    bool isFav = IsFavorited(movie.Id);
+                    <tr>
+                        <td>@movie.Id</td>
+                        <td><img src="@movie.ImageUrl" alt="@movie.Name" width="67" /></td>
+                        <td>
+                            <div class="d-flex justify-content-between align-items-start">
+                                <a href="https://www.imdb.com/title/@movie.ImdbId" target="_blank">
+                                    @movie.Name
+                                </a>
+                                <a data-fav="@movie.Id" href="#" class="text-danger" data-toggle="tooltip" title="@(isFav ? "Remove From Favorites" : "Add to Favorites")s">
+                                    <i class="fa-@(isFav ? "solid" : "regular") fa-heart"></i>
+                                </a>
+                            </div>
+                        </td>
+                        <td>@movie.Year</td>
+                        <td>@movie.Rating</td>
+                        <td>@string.Join(", ", movie.Genres.Select(x => x.Name))</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+@section Scripts{
+    <script>
+        $(".table").DataTable();
+        $('[data-toggle="tooltip"]').tooltip()
+
+        $("body").on("click", "[data-fav]", function (event) {
+            var a = this;
+            event.preventDefault();
+            var movieId = $(a).data("fav");
+
+            $.ajax({
+                type: "POST",
+                url: "@Url.Action("Toggle", "Favorites")",
+                data: { movieId },
+                success: function (data) {
+                    if (data.favorited) {
+                        $(a).attr("title", "Remove From Favorites");
+                        $(a).find("i").removeClass("fa-regular").addClass("fa-solid");
+                        success("Added to favorites");
+
+                    }
+                    else {
+                        $(a).attr("title", "Add to Favorites");
+                        $(a).find("i").removeClass("fa-solid").addClass("fa-regular");
+                        success("Removed from favorites");
+                    }
+                    $(a).tooltip("dispose");
+                    $(a).tooltip();
+                }
+            });
+        });
+    </script>
+}
